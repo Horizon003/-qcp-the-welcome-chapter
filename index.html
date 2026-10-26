@@ -94,10 +94,40 @@ body{background:radial-gradient(ellipse at 20% 0%,#f0e9d9 0%,#f8f6ef 48%,#e6eee8
       .intro-splash{display:none!important}
       .hero .hero-subtitle,.hero .mini,.hero .intro,.hero .welcome-note,.hero h1{animation:none!important;opacity:1!important;transform:none!important}
     }
+
+    /* Welcome button stays on screen until the visitor taps it. */
+    .intro-gate{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 24px;text-align:center;transition:opacity .35s ease,visibility .35s ease}
+    .intro-gate .gate-emblem{width:58px;height:58px;border:1px solid #b8d5c7;border-radius:50%;display:grid;place-items:center;font-size:27px;color:#0f7962;background:#eff8f0;margin-bottom:25px;box-shadow:0 12px 40px rgba(17,87,68,.08)}
+    .intro-gate .gate-eyebrow{font-size:11px;font-weight:800;letter-spacing:.19em;color:#618275;text-transform:uppercase;line-height:1.8}
+    .intro-gate h2{font-family:Georgia,"Times New Roman",serif;font-size:clamp(40px,8vw,81px);font-weight:normal;letter-spacing:-.06em;line-height:1.08;color:#183f35;margin:17px 0 12px}
+    .intro-gate h2 em{font-style:italic;color:#0b785d}
+    .intro-gate .gate-caption{max-width:330px;font-size:14px;line-height:1.7;color:#6e877c;margin:0 auto 29px}
+    .open-intro{border:0;border-radius:99px;background:linear-gradient(125deg,#116f59,#064638);color:#fff;min-height:58px;padding:15px 35px;display:inline-flex;align-items:center;justify-content:center;gap:14px;font:700 15px/1.2 var(--sans);letter-spacing:.06em;cursor:pointer;box-shadow:0 16px 40px rgba(7,78,58,.23);transition:transform .22s ease,box-shadow .22s ease}
+    .open-intro:hover{transform:translateY(-3px);box-shadow:0 20px 46px rgba(7,78,58,.29)}
+    .open-intro:active{transform:scale(.97)}
+    .open-intro:focus-visible{outline:3px solid #b8a16e;outline-offset:5px}
+    .open-intro svg{width:18px;height:18px;stroke:currentColor}
+    .gate-sound-note{font-size:11px;color:#759084;margin:17px 0 0;letter-spacing:.03em}
+    .intro-splash .splash-stage{opacity:0;visibility:hidden;transition:opacity .32s ease,visibility .32s ease}
+    .intro-splash.has-started .splash-stage{opacity:1;visibility:visible}
+    .intro-splash.has-started .intro-gate{opacity:0;visibility:hidden;pointer-events:none}
+    .intro-splash:not(.has-started) .splash-skip,.intro-splash:not(.has-started) .splash-bottom{display:none}
+    .intro-splash .splash-skip{z-index:5}
+    @media(max-width:590px){.intro-gate h2{font-size:clamp(39px,10vw,58px)}.intro-gate .gate-eyebrow{font-size:9px;letter-spacing:.13em}.intro-gate .gate-caption{font-size:13px}.open-intro{min-width:174px;min-height:56px}}
+    @media(prefers-reduced-motion:reduce){.intro-gate,.intro-splash .splash-stage{transition:none!important}}
 </style><script>if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentElement.classList.add("intro-playing")}</script>
 </head>
 <body>
-  <div id="intro-splash" class="intro-splash" aria-hidden="true">
+  <div id="intro-splash" class="intro-splash" role="dialog" aria-modal="true" aria-label="Welcome to QCP PharmD">
+    
+    <div id="intro-gate" class="intro-gate">
+      <div class="gate-emblem" aria-hidden="true">✦</div>
+      <div class="gate-eyebrow">From Your Second Professional Seniors</div>
+      <h2>A Special Welcome<br/><em>Awaits You.</em></h2>
+      <p class="gate-caption">Something lovely to begin your PharmD journey. Ready?</p>
+      <button type="button" id="open-intro" class="open-intro">OPEN <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+      <p class="gate-sound-note">🔊 Tap to begin with typing sound</p>
+    </div>
     <div class="splash-decor"></div>
     <div class="splash-top">QUAID-E-AZAM COLLEGE PATTOKI</div>
     <div class="splash-stage"><div id="splash-title" class="splash-title">
@@ -155,25 +185,65 @@ body{background:radial-gradient(ellipse at 20% 0%,#f0e9d9 0%,#f8f6ef 48%,#e6eee8
       const second=document.getElementById('typed-second');
       const target=document.getElementById('main-heading');
       const skip=document.getElementById('skip-intro');
-      let cancelled=false;
+      const open=document.getElementById('open-intro');
+      let cancelled=false,started=false,audioContext=null,watchdog=null;
       const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+      function prepareAudio(){
+        // Tap unlocks sound on iPhone Safari; no external sound file required.
+        const AudioEngine=window.AudioContext||window.webkitAudioContext;
+        if(!AudioEngine)return;
+        try{
+          audioContext=new AudioEngine();
+          if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
+        }catch(e){audioContext=null;}
+      }
+      function typeClick(){
+        if(!audioContext||audioContext.state!=='running')return;
+        try{
+          const now=audioContext.currentTime;
+          const osc=audioContext.createOscillator();
+          const volume=audioContext.createGain();
+          osc.type='triangle';
+          osc.frequency.setValueAtTime(550+Math.random()*120,now);
+          volume.gain.setValueAtTime(.0001,now);
+          volume.gain.exponentialRampToValueAtTime(.022,now+.003);
+          volume.gain.exponentialRampToValueAtTime(.0001,now+.036);
+          osc.connect(volume);volume.connect(audioContext.destination);
+          osc.start(now);osc.stop(now+.045);
+        }catch(e){/* Visual typing still works if device blocks audio. */}
+      }
       function finish(){
         if(cancelled)return;
         cancelled=true;
+        if(watchdog)clearTimeout(watchdog);
+        if(audioContext&&audioContext.state!=='closed')audioContext.close().catch(()=>{});
         root.classList.remove('intro-playing');
         root.classList.add('intro-finished');
         splash.remove();
         window.dispatchEvent(new Event('resize'));
       }
       skip.addEventListener('click',finish);
+      open.addEventListener('click',()=>{
+        if(started||cancelled)return;
+        started=true;
+        prepareAudio();
+        open.disabled=true;
+        splash.classList.add('has-started');
+        // Safety fallback runs only AFTER the Open button is pressed.
+        watchdog=setTimeout(finish,6500);
+        run();
+      });
       async function run(){
         try{
+          await pause(420);
+          if(cancelled)return;
           const parts=[['Welcome,',first],['Juniors!',second]];
           for(const [word,el] of parts){
             for(const letter of word){
               if(cancelled)return;
               el.textContent+=letter;
-              await pause(68);
+              if(letter!==' ')typeClick();
+              await pause(85);
             }
             await pause(170);
           }
@@ -195,9 +265,7 @@ body{background:radial-gradient(ellipse at 20% 0%,#f0e9d9 0%,#f8f6ef 48%,#e6eee8
           finish();
         }catch(e){finish();}
       }
-      // Always clear the splash even if tab throttling or a browser animation fails.
-      setTimeout(finish,5400);
-      run();
+      // The visitor controls when the animation starts.
     })();
     // Add your own profile URL here, e.g. https://instagram.com/yourusername
     const CREATOR_PROFILE_URL = 'https://www.instagram.com/realhyzen/';
