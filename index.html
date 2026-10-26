@@ -53,8 +53,60 @@ body{background:radial-gradient(ellipse at 20% 0%,#f0e9d9 0%,#f8f6ef 48%,#e6eee8
 .creator-photo{height:96px;width:96px;border-radius:50%;margin:0 auto 16px;border:3px solid #c7ad72;object-fit:cover;background:#e1e8df}
 .creator .overline{font-size:11px;letter-spacing:.2em;color:#607b70;font-weight:700}.creator h2{font-family:Georgia,serif;font-size:clamp(25px,5vw,34px);margin:10px 0;color:#143e32}.creator p{color:#5a7269;margin:8px 0 20px}.creator a{display:inline-flex;padding:12px 24px;border-radius:99px;background:#125e48;color:white;text-decoration:none;font-weight:700}.creator a:hover{background:#0b4435}
 @media(prefers-reduced-motion:reduce){.reveal,.hero .mini,.hero h1,.hero .intro{animation:none;transition:none;opacity:1;transform:none}}
-</style></head>
-<body><div class="progress" id="scroll-progress" aria-hidden="true"></div>
+
+    /* Welcome sequence: type at full size, then physically shrink into the hero. */
+    .hero-subtitle{font-size:clamp(13px,1.7vw,18px);color:#176651;font-weight:700;letter-spacing:.055em;margin:-2px auto 18px}
+    .intro-playing{overflow:hidden;scroll-behavior:auto}
+    .intro-playing .hero h1{opacity:0!important;animation:none!important}
+    .intro-playing .hero .hero-subtitle,.intro-playing .hero .mini,.intro-playing .hero .intro,.intro-playing .hero .welcome-note{opacity:0!important;animation:none!important}
+    .intro-finished .hero h1{animation:none!important;opacity:1!important}
+    .intro-finished .hero .hero-subtitle{animation:arriveIn .65s ease-out both}
+    .intro-finished .hero .intro{animation:arriveIn .85s .11s ease-out both}
+    .intro-finished .hero .mini,.intro-finished .hero .welcome-note{animation:arriveIn .75s .14s ease-out both}
+    @keyframes arriveIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    .intro-splash{display:none;position:fixed;inset:0;z-index:120;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 18% 15%,#e5f2e8 0%,transparent 54%),radial-gradient(ellipse at 88% 88%,#d8e9df 0%,transparent 47%),#f7f6ef}
+    .intro-playing .intro-splash{display:grid;place-items:center}
+    .intro-splash.is-receding{animation:splashFade 1s ease-out forwards}
+    @keyframes splashFade{0%{background-color:#f7f6ef}45%{background-color:rgba(247,246,239,.85)}100%{opacity:0;visibility:hidden}}
+    .splash-decor{position:absolute;inset:20px;border:1px solid rgba(12,103,78,.18);border-radius:28px;pointer-events:none}
+    .splash-decor:before,.splash-decor:after{content:"✦";position:absolute;color:#b5a36c;font-size:34px}
+    .splash-decor:before{top:-17px;left:40px;background:#f5f6ef;padding:0 12px}
+    .splash-decor:after{bottom:-19px;right:45px;background:#edf3e8;padding:0 12px}
+    .splash-top{position:absolute;top:clamp(54px,12vh,110px);left:16px;right:16px;text-align:center;font-size:11px;letter-spacing:.24em;font-weight:750;color:#53796d}
+    .splash-stage{width:100%;height:100%;display:grid;place-items:center;padding:20px;pointer-events:none}
+    .splash-title{font-family:Georgia,"Times New Roman",serif;text-align:center;font-size:clamp(67px,12vw,148px);letter-spacing:-.065em;line-height:.98;color:#1a3440;transform-origin:center center;white-space:nowrap;will-change:transform}
+    .splash-title em{color:#086b5a;font-style:italic}
+    .splash-title .cursor{display:inline-block;width:3px;height:.77em;margin-left:6px;vertical-align:-.05em;border-radius:2px;background:#b6a36a;animation:caretBlink .65s step-end infinite}
+    .splash-title .cursor.is-hidden{visibility:hidden;animation:none}
+    @keyframes caretBlink{50%{opacity:0}}
+    .splash-bottom{position:absolute;bottom:clamp(63px,10vh,105px);left:0;right:0;text-align:center;color:#65847b;letter-spacing:.19em;font-size:10px;font-weight:750}
+    .splash-skip{position:absolute;right:35px;bottom:26px;z-index:2;border:1px solid #c4dbcf;border-radius:99px;background:rgba(255,255,255,.75);padding:9px 17px;font-size:12px;color:#365f52;cursor:pointer}
+    .splash-skip:focus-visible{outline:3px solid #087f76;outline-offset:3px}
+    @media(max-width:590px){
+      .hero-subtitle{font-size:13px;line-height:1.6;padding:0 12px;margin:-5px auto 16px}
+      .splash-title{font-size:clamp(58px,16vw,92px);letter-spacing:-.072em}
+      .splash-decor{inset:12px;border-radius:20px}
+      .splash-top{top:11%;font-size:9px}
+      .splash-bottom{bottom:12%;font-size:9px}
+      .splash-skip{right:24px;bottom:24px}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .intro-splash{display:none!important}
+      .hero .hero-subtitle,.hero .mini,.hero .intro,.hero .welcome-note,.hero h1{animation:none!important;opacity:1!important;transform:none!important}
+    }
+</style><script>if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentElement.classList.add("intro-playing")}</script>
+</head>
+<body>
+  <div id="intro-splash" class="intro-splash" aria-hidden="true">
+    <div class="splash-decor"></div>
+    <div class="splash-top">QUAID-E-AZAM COLLEGE PATTOKI</div>
+    <div class="splash-stage"><div id="splash-title" class="splash-title">
+      <span id="typed-first"></span><br/><em id="typed-second"></em><span id="splash-cursor" class="cursor"></span>
+    </div></div>
+    <div class="splash-bottom">A LITTLE HELLO FROM YOUR SENIORS</div>
+    <button id="skip-intro" class="splash-skip" type="button" aria-label="Skip welcome animation">Skip intro</button>
+  </div>
+<div class="progress" id="scroll-progress" aria-hidden="true"></div>
   <div class="site"><div class="noise" aria-hidden="true"></div>
     <div class="wrap">
       <header class="topbar">
@@ -66,7 +118,8 @@ body{background:radial-gradient(ellipse at 20% 0%,#f0e9d9 0%,#f8f6ef 48%,#e6eee8
           <svg class="star" viewBox="0 0 50 50" fill="none" aria-hidden="true"><path d="M25 0 30 20 50 25 30 30 25 50 20 30 0 25 20 20Z" fill="currentColor"/></svg>
           <svg class="star star2" viewBox="0 0 50 50" fill="none" aria-hidden="true"><path d="M25 0 30 20 50 25 30 30 25 50 20 30 0 25 20 20Z" fill="currentColor"/></svg>
           <div class="mini">TO OUR NEW PHARMD FAMILY</div>
-          <h1 id="main-heading">A New Chapter<br/><em>Begins Here.</em></h1>
+          <h1 id="main-heading">Welcome,<br/><em>Juniors!</em></h1>
+          <p class="hero-subtitle">From Your Second Professional Seniors</p>
           <p class="intro">Dear juniors, welcome to the PharmD family! New friendships, unforgettable memories and five incredible years ahead. Your Second Professional seniors are cheering you on.</p>
           <div class="welcome-note"><span class="dot"></span> A little hello from your seniors · 27 October 2026</div>
         </section>
@@ -90,6 +143,62 @@ body{background:radial-gradient(ellipse at 20% 0%,#f0e9d9 0%,#f8f6ef 48%,#e6eee8
     </div>
   </div>
   <script>
+
+    // First-visit cinematic entrance: type Welcome, Juniors! and shrink it into the hero title.
+    (function welcomeSequence(){
+      const root=document.documentElement;
+      if(!root.classList.contains('intro-playing')) return;
+      const splash=document.getElementById('intro-splash');
+      const title=document.getElementById('splash-title');
+      const cursor=document.getElementById('splash-cursor');
+      const first=document.getElementById('typed-first');
+      const second=document.getElementById('typed-second');
+      const target=document.getElementById('main-heading');
+      const skip=document.getElementById('skip-intro');
+      let cancelled=false;
+      const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+      function finish(){
+        if(cancelled)return;
+        cancelled=true;
+        root.classList.remove('intro-playing');
+        root.classList.add('intro-finished');
+        splash.remove();
+        window.dispatchEvent(new Event('resize'));
+      }
+      skip.addEventListener('click',finish);
+      async function run(){
+        try{
+          const parts=[['Welcome,',first],['Juniors!',second]];
+          for(const [word,el] of parts){
+            for(const letter of word){
+              if(cancelled)return;
+              el.textContent+=letter;
+              await pause(68);
+            }
+            await pause(170);
+          }
+          if(cancelled)return;
+          await pause(310);
+          cursor.classList.add('is-hidden');
+          const from=title.getBoundingClientRect();
+          const to=target.getBoundingClientRect();
+          const fromCenter={x:from.left+from.width/2,y:from.top+from.height/2};
+          const toCenter={x:to.left+to.width/2,y:to.top+to.height/2};
+          const x=toCenter.x-fromCenter.x, y=toCenter.y-fromCenter.y;
+          const scale=Math.max(.32,Math.min(1,to.height/from.height));
+          splash.classList.add('is-receding');
+          const motion=title.animate([
+            {transform:'translate3d(0,0,0) scale(1)',opacity:1},
+            {transform:'translate3d('+x+'px,'+y+'px,0) scale('+scale+')',opacity:1}
+          ],{duration:920,easing:'cubic-bezier(.22,.83,.24,1)',fill:'forwards'});
+          await Promise.race([motion.finished.catch(()=>{}),pause(1100)]);
+          finish();
+        }catch(e){finish();}
+      }
+      // Always clear the splash even if tab throttling or a browser animation fails.
+      setTimeout(finish,5400);
+      run();
+    })();
     // Add your own profile URL here, e.g. https://instagram.com/yourusername
     const CREATOR_PROFILE_URL = 'https://www.instagram.com/realhyzen/';
     const creatorLink = document.getElementById('creator-link');
