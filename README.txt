@@ -1,0 +1,1 @@
+Upload index.html and favicon.svg to GitHub Pages. Add your portrait as hyzen.png OR hyzen.jpg in the SAME folder as index.html. In index.html set CREATOR_PROFILE_URL to your personal profile link. Enable GitHub Pages in repository Settings > Pages > Deploy from branch. Animations respect reduced-motion settings.
