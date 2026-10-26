@@ -115,9 +115,14 @@ body{background:radial-gradient(ellipse at 20% 0%,#f0e9d9 0%,#f8f6ef 48%,#e6eee8
     .intro-splash .splash-skip{z-index:5}
     @media(max-width:590px){.intro-gate h2{font-size:clamp(39px,10vw,58px)}.intro-gate .gate-eyebrow{font-size:9px;letter-spacing:.13em}.intro-gate .gate-caption{font-size:13px}.open-intro{min-width:174px;min-height:56px}}
     @media(prefers-reduced-motion:reduce){.intro-gate,.intro-splash .splash-stage{transition:none!important}}
+
+    .music-switch{position:fixed;right:max(17px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));z-index:35;display:flex;align-items:center;gap:9px;padding:12px 17px;border:1px solid #bfd9ca;border-radius:99px;background:#fcfffb;box-shadow:0 10px 32px rgba(8,67,54,.18);color:#086b5a;font:700 12px var(--sans);cursor:pointer}
+    .music-switch[aria-pressed="false"]{color:#6d8980}
+    .music-switch:focus-visible{outline:3px solid #b5a072;outline-offset:3px}
+    .intro-playing .music-switch{display:none}
 </style><script>if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentElement.classList.add("intro-playing")}</script>
 </head>
-<body>
+<body><button class="music-switch" id="music-switch" type="button" aria-label="Mute background instrumental" aria-pressed="true">♫ <span id="music-switch-label">Music On</span></button>
   <div id="intro-splash" class="intro-splash" role="dialog" aria-modal="true" aria-label="Welcome to QCP PharmD">
     
     <div id="intro-gate" class="intro-gate">
@@ -187,36 +192,127 @@ body{background:radial-gradient(ellipse at 20% 0%,#f0e9d9 0%,#f8f6ef 48%,#e6eee8
       const skip=document.getElementById('skip-intro');
       const open=document.getElementById('open-intro');
       let cancelled=false,started=false,audioContext=null,watchdog=null;
+      let musicGain=null,musicTimer=null,musicStep=0,musicNext=0,musicOn=true;
+      const musicButton=document.getElementById('music-switch');
+      const musicLabel=document.getElementById('music-switch-label');
       const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+      // Calm original instrumental: a looping 4-chord piano-style welcome melody.
+      function makeTone(freq,t,seconds,vol,type='triangle',bus=musicGain){
+        const osc=audioContext.createOscillator(),g=audioContext.createGain();
+        osc.type=type;osc.frequency.setValueAtTime(freq,t);
+        g.gain.setValueAtTime(.0001,t);
+        g.gain.exponentialRampToValueAtTime(vol,t+.017);
+        g.gain.exponentialRampToValueAtTime(.0001,t+seconds);
+        osc.connect(g);g.connect(bus);osc.start(t);osc.stop(t+seconds+.02);
+      }
+      function softPad(freq,t,seconds){
+        const osc=audioContext.createOscillator(),g=audioContext.createGain();
+        osc.type='sine';osc.frequency.setValueAtTime(freq,t);
+        g.gain.setValueAtTime(.0001,t);
+        g.gain.linearRampToValueAtTime(.017,t+.25);
+        g.gain.setValueAtTime(.017,t+seconds-.30);
+        g.gain.linearRampToValueAtTime(.0001,t+seconds);
+        osc.connect(g);g.connect(musicGain);osc.start(t);osc.stop(t+seconds+.02);
+      }
+      const chords=[
+        {bass:130.81,keys:[261.63,329.63,392,493.88]},
+        {bass:110,keys:[220,261.63,329.63,392]},
+        {bass:87.31,keys:[174.61,261.63,329.63,440]},
+        {bass:98,keys:[196,293.66,392,493.88]}
+      ];
+      const tunes=[
+        [659.25,0,783.99,0,659.25,587.33,523.25,0],
+        [659.25,0,523.25,0,493.88,523.25,659.25,0],
+        [698.46,0,659.25,0,523.25,440,523.25,0],
+        [587.33,0,659.25,0,783.99,0,659.25,0]
+      ];
+      const halfBeat=60/88/2;
+      function songSchedule(){
+        if(!audioContext||audioContext.state!=='running')return;
+        while(musicNext<audioContext.currentTime+.68){
+          const bar=Math.floor(musicStep/8)%4,step=musicStep%8,chord=chords[bar];
+          if(step===0){
+            chord.keys.forEach(n=>softPad(n/2,musicNext,halfBeat*7.9));
+            makeTone(chord.bass,musicNext,.8,.15);
+            makeTone(chord.keys[1],musicNext+.07,.65,.075);
+            makeTone(chord.keys[3],musicNext+.14,.59,.065);
+          }
+          if(step===4)makeTone(chord.bass*2,musicNext,.55,.045);
+          const melody=tunes[bar][step];
+          if(melody)makeTone(melody,musicNext,step===0?.67:.43,.115);
+          musicStep=(musicStep+1)%32;
+          musicNext+=halfBeat;
+        }
+      }
+      function musicVolume(v){
+        if(musicGain&&audioContext)musicGain.gain.setTargetAtTime(v,audioContext.currentTime,.18);
+      }
+      function beginSong(){
+        if(!audioContext||musicGain)return;
+        musicGain=audioContext.createGain();
+        musicGain.gain.value=.0001;
+        musicGain.connect(audioContext.destination);
+        const echo=audioContext.createDelay(.7),wet=audioContext.createGain();
+        echo.delayTime.value=.21;wet.gain.value=.13;
+        musicGain.connect(echo);echo.connect(wet);wet.connect(audioContext.destination);
+        musicStep=0;musicNext=audioContext.currentTime+.09;
+        musicVolume(.16);
+        musicTimer=setInterval(songSchedule,320);
+        songSchedule();
+      }
+      function syncMusicButton(){
+        musicButton.setAttribute('aria-pressed',String(musicOn));
+        musicLabel.textContent=musicOn?'Music On':'Music Off';
+        musicButton.setAttribute('aria-label',musicOn?'Mute background instrumental':'Play background instrumental');
+      }
+      musicButton.addEventListener('click',()=>{
+        if(!audioContext)prepareAudio();
+        musicOn=!musicOn;
+        if(audioContext&&audioContext.state==='suspended')audioContext.resume().catch(()=>{});
+        musicVolume(musicOn?.48:0);
+        syncMusicButton();
+      });
+      document.addEventListener('visibilitychange',()=>{
+        if(!audioContext||!musicGain)return;
+        if(document.hidden)musicVolume(0);
+        else {musicNext=audioContext.currentTime+.08;musicVolume(musicOn?.48:0);}
+      });
       function prepareAudio(){
-        // Tap unlocks sound on iPhone Safari; no external sound file required.
+        // Audio resumes only after OPEN is pressed: required for iPhone Safari.
         const AudioEngine=window.AudioContext||window.webkitAudioContext;
         if(!AudioEngine)return;
         try{
-          audioContext=new AudioEngine();
-          if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
+          if(!audioContext)audioContext=new AudioEngine();
+          const result=audioContext.resume();
+          if(result&&result.catch)result.catch(()=>{});
+          beginSong();
         }catch(e){audioContext=null;}
       }
       function typeClick(){
         if(!audioContext||audioContext.state!=='running')return;
         try{
-          const now=audioContext.currentTime;
-          const osc=audioContext.createOscillator();
-          const volume=audioContext.createGain();
-          osc.type='triangle';
-          osc.frequency.setValueAtTime(550+Math.random()*120,now);
-          volume.gain.setValueAtTime(.0001,now);
-          volume.gain.exponentialRampToValueAtTime(.022,now+.003);
-          volume.gain.exponentialRampToValueAtTime(.0001,now+.036);
-          osc.connect(volume);volume.connect(audioContext.destination);
-          osc.start(now);osc.stop(now+.045);
-        }catch(e){/* Visual typing still works if device blocks audio. */}
+          // 65ms mechanical keyboard click, considerably clearer than old quiet beep.
+          const rate=audioContext.sampleRate,len=Math.floor(rate*.065);
+          const sample=audioContext.createBuffer(1,len,rate);
+          const data=sample.getChannelData(0);
+          for(let i=0;i<len;i++){
+            const t=i/rate;
+            data[i]=((Math.random()*2-1)*.69*Math.exp(-t*105)+
+              .35*Math.sin(2*Math.PI*260*t)*Math.exp(-t*85))*.88;
+          }
+          const src=audioContext.createBufferSource(),filter=audioContext.createBiquadFilter(),volume=audioContext.createGain();
+          src.buffer=sample;filter.type='lowpass';filter.frequency.value=3900;volume.gain.value=.83;
+          src.connect(filter);filter.connect(volume);volume.connect(audioContext.destination);
+          src.start();
+        }catch(e){/* Website still animates if device audio is muted. */}
       }
       function finish(){
         if(cancelled)return;
         cancelled=true;
         if(watchdog)clearTimeout(watchdog);
-        if(audioContext&&audioContext.state!=='closed')audioContext.close().catch(()=>{});
+        // Keep the gentle song playing on the main website after the animation.
+        musicVolume(musicOn?.48:0);
         root.classList.remove('intro-playing');
         root.classList.add('intro-finished');
         splash.remove();
